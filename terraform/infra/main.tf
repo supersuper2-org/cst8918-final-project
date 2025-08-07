@@ -1,6 +1,6 @@
 
 # Create the resource group for this environment
-resource "azurerm_resource_group" "main" {
+resource "azurerm_resource_group" "main_rg" {
   name     = "${var.label_prefix}-group-2"
   location = var.location
 }
@@ -10,5 +10,5 @@ module "network" {
   source            = "./modules/network"
   label_prefix      = var.label_prefix
   location          = var.location
-  resource_group    = azurerm_resource_group.main.name
+  resource_group    = azurerm_resource_group.main_rg.name
 }

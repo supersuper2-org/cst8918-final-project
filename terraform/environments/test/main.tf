@@ -25,7 +25,7 @@ locals {
   tags = {
     Environment = local.environment
     Project     = "CST8918Final"
-    Team        = "Group-2"
+    Team        = "Group"
   }
 }
 

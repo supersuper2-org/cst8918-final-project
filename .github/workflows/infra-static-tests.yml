@@ -1,0 +1,61 @@
+name: Static Analysis
+
+on:
+  push:
+    paths:
+      - 'terraform/environments/**'
+      - 'terraform/infra/**'
+      - '.github/workflows/infra-statics-tests.yml'
+
+jobs:
+  terraform-static-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.0"
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: v0.44.1
+
+      - name: Setup tfsec
+        uses: aquasecurity/tfsec-action@v1.0.0
+        with:
+          working_directory: .
+
+      - name: Terraform Format Check
+        run: |
+          terraform fmt -check -recursive
+        working-directory: .
+
+      - name: Terraform Validate
+        run: |
+          for dir in terraform/environments/*/; do
+            if [ -f "$dir/main.tf" ]; then
+              echo "Validating $dir"
+              terraform init -backend=false $dir
+              terraform validate $dir
+            fi
+          done
+
+      - name: TFLint
+        run: |
+          tflint --init
+          tflint --recursive
+
+      - name: tfsec
+        run: |
+          tfsec --format sarif --out tfsec.sarif
+        continue-on-error: true
+
+      - name: Upload tfsec results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: tfsec.sarif 

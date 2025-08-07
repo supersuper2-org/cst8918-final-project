@@ -42,20 +42,20 @@ jobs:
 
       - name: Terraform Init
         run: terraform init
-        working-directory: environments/${{ matrix.environment }}
+        working-directory: terraform/environments/${{ matrix.environment }}
 
       - name: TFLint
         run: |
           tflint --init
           tflint --recursive
-        working-directory: environments/${{ matrix.environment }}
+        working-directory: terraform/environments/${{ matrix.environment }}
 
       - name: Terraform Plan
         run: terraform plan -out=tfplan
-        working-directory: environments/${{ matrix.environment }}
+        working-directory: terraform/environments/${{ matrix.environment }}
 
       - name: Upload Terraform Plan
         uses: actions/upload-artifact@v4
         with:
           name: tfplan-${{ matrix.environment }}
-          path: environments/${{ matrix.environment }}/tfplan 
+          path: terraform/environments/${{ matrix.environment }}/tfplan 

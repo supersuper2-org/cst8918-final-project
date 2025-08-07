@@ -20,16 +20,15 @@ provider "azurerm" {
 }
 
 locals {
-  environment = "prod"
-  location    = "Canada Central"
+  environment         = "prod"
+  location            = "Canada Central"
   resource_group_name = "cst8918-final-project-group-2"
-  subnet_id = "/subscriptions/431fca8d-e614-4268-aa3c-22a2e684933a/resourceGroups/cst8918-final-project-group-2/providers/Microsoft.Network/virtualNetworks/cst8918-final-project-vnet/subnets/cst8918-final-project-prod-subnet"
+  subnet_id           = "/subscriptions/431fca8d-e614-4268-aa3c-22a2e684933a/resourceGroups/cst8918-final-project-group-2/providers/Microsoft.Network/virtualNetworks/cst8918-final-project-vnet/subnets/cst8918-final-project-prod-subnet"
 }
 
 # AKS Module for Production Environment
 module "aks" {
-  source = "../../infra/modules/aks"
-
+  source              = "../../infra/modules/aks"
   environment         = local.environment
   resource_group_name = local.resource_group_name
   location            = local.location

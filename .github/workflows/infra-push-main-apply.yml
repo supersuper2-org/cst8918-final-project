@@ -46,7 +46,7 @@ jobs:
           # 'terraform_wrapper: false' is generally good for explicit working-directory control,
           # but can be omitted if not causing issues.
 
-      - name: Azure Login (with OIDC) 🌐
+      - name: Azure Login (with OIDC)
         # This action uses the secrets (client-id, tenant-id, subscription-id)
         # and the 'id-token: write' permission to authenticate with Azure via OIDC.
         uses: azure/login@v1 # or v2
@@ -55,7 +55,7 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Terraform Init for ${{ matrix.environment }} 🚀
+      - name: Terraform Init for ${{ matrix.environment }}
         # Initialize the Terraform working directory for the current environment.
         # This will download providers and configure the backend (if defined in your .tf files).
         run: terraform init

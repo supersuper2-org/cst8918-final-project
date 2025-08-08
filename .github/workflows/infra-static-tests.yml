@@ -35,12 +35,28 @@ jobs:
         working-directory: .
 
       - name: Terraform Validate
-        run: |
+        run:  |
+          # Loop through each subdirectory in terraform/environments/
           for dir in terraform/environments/*/; do
+            # Check if main.tf exists in the directory
             if [ -f "$dir/main.tf" ]; then
-              echo "Validating $dir"
-              terraform init -backend=false $dir
-              terraform validate $dir
+              echo "--- Validating $(basename "$dir") ---"
+            
+              # Change into the directory
+              pushd "$dir" > /dev/null
+            
+              # Run terraform init without a backend
+              terraform init -backend=false
+            
+              # Run terraform validate
+              terraform validate
+            
+              # Change back to the original directory
+              popd > /dev/null
+            
+              echo "--- $(basename "$dir") Validation Complete ---"
+            else
+              echo "Skipping $dir - no main.tf found."
             fi
           done
 

@@ -3,7 +3,7 @@ terraform {
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
-      version = "~> 3.0"
+      version = "~> 4.35.0"
     }
   }
 
@@ -11,45 +11,33 @@ terraform {
     resource_group_name  = "cst8918-final-project-group-2-storage"
     storage_account_name = "cst8918finalprojectgrp2"
     container_name       = "tfstate"
-    key                  = "prod/terraform.tfstate"
+    key                  = "prod.app.tfstate"
   }
 }
 
 provider "azurerm" {
   features {}
+  use_oidc = true
 }
 
 locals {
-  environment = "prod"
-  location    = "East US"
-  tags = {
-    Environment = local.environment
-    Project     = "CST8918Final"
-    Team        = "Group"
-  }
-}
-
-# Network Module
-module "network" {
-  source = "infra/modules/network"
-
-  resource_group_name = "cst8918-final-project-group-2-storage"
-  location            = local.location
-  environment         = local.environment
-  tags                = local.tags
+  environment         = "test"
+  location            = "Canada Central"
+  resource_group_name = "cst8918-final-project-group-2"
+  subnet_id           = "/subscriptions/431fca8d-e614-4268-aa3c-22a2e684933a/resourceGroups/cst8918-final-project-group-2/providers/Microsoft.Network/virtualNetworks/cst8918-final-project-vnet/subnets/cst8918-final-project-test-subnet"
 }
 
 # AKS Module for Production Environment
 module "aks" {
-  source = "infra/modules/aks"
+  source = "../../infra/modules/aks"
 
-  resource_group_name = module.network.resource_group_name
-  location            = local.location
   environment         = local.environment
-  subnet_id           = module.network.test_subnet_id
-  node_count          = 1
+  resource_group_name = local.resource_group_name
+  location            = local.location
   enable_auto_scaling = false
-  tags                = local.tags
+  minimum_node_count  = 1
+  maximum_node_count  = 1
+  subnet_id           = local.subnet_id
 }
 
 # Weather App Module for Test Environment

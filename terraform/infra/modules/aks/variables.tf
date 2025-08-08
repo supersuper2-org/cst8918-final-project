@@ -1,62 +1,35 @@
+variable "environment" {
+  description = "The environment for the AKS cluster, e.g., 'development', 'staging', 'production'."
+  type        = string
+}
+
 variable "resource_group_name" {
-  description = "Name of the resource group"
+  description = "The name of the resource group where the AKS cluster will be created."
   type        = string
 }
 
 variable "location" {
-  description = "Azure region for the resources"
+  description = "The Azure region where the AKS cluster will be created."
   type        = string
-  default     = "East US"
-}
-
-variable "environment" {
-  description = "Environment name (dev, test, prod)"
-  type        = string
-}
-
-variable "kubernetes_version" {
-  description = "Kubernetes version"
-  type        = string
-  default     = "1.32"
-}
-
-variable "node_count" {
-  description = "Number of nodes in the default node pool"
-  type        = number
-  default     = 1
-}
-
-variable "vm_size" {
-  description = "VM size for the nodes"
-  type        = string
-  default     = "Standard_B2s"
 }
 
 variable "enable_auto_scaling" {
-  description = "Enable auto scaling for the node pool"
+  description = "Enable auto-scaling for the AKS cluster."
   type        = bool
-  default     = false
 }
 
-variable "min_count" {
-  description = "Minimum number of nodes for auto scaling"
+variable "minimum_node_count" {
+  description = "The minimum number of nodes in the AKS cluster."
   type        = number
-  default     = 1
 }
 
-variable "max_count" {
-  description = "Maximum number of nodes for auto scaling"
+variable "maximum_node_count" {
+  description = "The maximum number of nodes in the AKS cluster."
   type        = number
-  default     = 3
 }
 
 variable "subnet_id" {
-  description = "ID of the subnet for the AKS cluster"
+  description = "The ID of the subnet where the AKS cluster will be deployed."
   type        = string
 }
 
-variable "tags" {
-  description = "Tags to apply to all resources"
-  type        = map(string)
-  default     = {}
-} 

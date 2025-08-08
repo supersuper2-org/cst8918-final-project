@@ -1,0 +1,90 @@
+name: Static Analysis
+
+on:
+  push:
+    branches:
+      - '*' # Run on any branch
+    paths:
+      - 'terraform/**' # Run if any file in 'terraform' directory changes
+      - '.github/workflows/infra-statics-tests.yml' # Also run if workflow file changes
+
+jobs:
+  terraform-static-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.0"
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: v0.44.1
+
+      - name: Setup tfsec # This step only installs tfsec, does not run the scan
+        uses: aquasecurity/tfsec-action@v1.0.0
+        # No working_directory here if tfsec-sarif-action handles the scan later
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+        working-directory: terraform/ # Run fmt from the root of your terraform directory
+
+      - name: Terraform Validate
+        run: |
+          # Define paths to your root Terraform modules where you'd run 'terraform init' and 'validate'
+          # Adjust this array based on your project structure.
+          # Example: ["terraform/environments/prod", "terraform/environments/dev", "terraform/infra/my-service-module"]
+          terraform_root_modules=(
+            "terraform/environments/prod"
+            "terraform/environments/test"
+            "terraform/infra"
+            "terraform/backend"
+          )
+
+          for dir in "${terraform_root_modules[@]}"; do
+            if [ -f "$dir/main.tf" ]; then
+              echo "--- Validating $dir ---"
+            
+              # Change into the directory
+              pushd "$dir" > /dev/null
+            
+              # Run terraform init without a backend (for validation only)
+              terraform init -backend=false
+            
+              # Run terraform validate
+              terraform validate
+            
+              # Change back to the original directory
+              popd > /dev/null
+            
+              echo "--- $dir Validation Complete ---"
+            else
+              echo "Skipping $dir - no main.tf found at path or path is not a root module directory."
+            fi
+          done
+
+      - name: TFLint
+        run: |
+          tflint --init
+          tflint --recursive
+        working-directory: terraform/ # Run TFLint recursively from the root of your terraform directory
+
+      # Perform a security scan of the terraform code using tfsec and generate SARIF output
+      - name: Run tfsec and Generate SARIF
+        uses: tfsec/tfsec-sarif-action@master
+        with:
+          sarif_file: tfsec.sarif
+          # Ensure tfsec scans all relevant directories.
+          # If your main terraform code is under 'terraform/', you can use this:
+          working_directory: terraform/
+          # Or, if you want to scan all files recursively from the repo root:
+          # tfsec_args: "--force-all-dirs"
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: tfsec.sarif

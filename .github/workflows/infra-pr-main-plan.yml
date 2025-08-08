@@ -1,0 +1,141 @@
+name: Terraform CI-CD
+
+on:
+  pull_request:
+    paths:
+      - 'terraform/environments/**'
+      - 'terraform/infra/**'
+      - '.github/workflows/infra-pr-main-plan.yml'
+
+# Special permissions required for OIDC authentication and posting PR comments
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+# These environment variables are used by the AzureRM Terraform provider to set up OIDC authentication.
+# ARM_ACCESS_KEY is typically for Azure Storage Blob backend authentication, keep if needed.
+env:
+  ARM_CLIENT_ID: "${{ secrets.AZURE_CLIENT_ID }}"
+  ARM_SUBSCRIPTION_ID: "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+  ARM_TENANT_ID: "${{ secrets.AZURE_TENANT_ID }}"
+  ARM_ACCESS_KEY: "${{ secrets.ARM_ACCESS_KEY }}"
+
+jobs:
+  # The TFLint Static Tests job has been removed as requested.
+
+  # Run Terraform Plan for specific environments
+  terraform-plan:
+    name: 'Terraform Plan for ${{ matrix.environment }}' # Dynamic job name for clarity
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        environment: [test, prod] # Runs the job for 'test' and 'prod' environments
+    
+    env:
+      # This is needed since we are running terraform with read-only permissions for planning
+      ARM_SKIP_PROVIDER_REGISTRATION: true
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup Terraform CLI
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: "1.5.0"
+        terraform_wrapper: false # Ensures explicit working-directory control per step
+
+    - name: Azure Login (with OIDC)
+      uses: azure/login@v1 # Use v1 or v2, ensure OIDC is configured in Azure AD
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+    # Initialize a new or existing Terraform working directory for the current environment
+    - name: Terraform Init
+      run: terraform init
+      working-directory: terraform/environments/${{ matrix.environment }}
+
+    # Checks that all Terraform configuration files adhere to a canonical format
+    # Will fail the build if not. The -recursive flag scans subdirectories.
+    - name: Terraform Format Check
+      run: terraform fmt -check -recursive
+      working-directory: terraform/environments/${{ matrix.environment }}
+
+    # Generates an execution plan for Terraform.
+    # An exit code of 0 indicates no changes, 1 a Terraform failure, 2 there are pending changes.
+    - name: Terraform Plan
+      id: tf-plan
+      run: |
+        export exitcode=0
+        terraform plan -detailed-exitcode -no-color -out tfplan || export exitcode=$?
+
+        echo "exitcode=$exitcode" >> $GITHUB_OUTPUT
+        
+        if [ $exitcode -eq 1 ]; then
+          echo "Terraform Plan Failed for ${{ matrix.environment }}!"
+          exit 1
+        else 
+          exit 0
+        fi
+      working-directory: terraform/environments/${{ matrix.environment }}
+    
+    # Check if the tfplan file was created
+    - name: Check Plan File Exists
+      run: |
+        if [ ! -f tfplan ]; then
+          echo "tfplan file not found for ${{ matrix.environment }}!"
+          exit 1
+        fi
+      working-directory: terraform/environments/${{ matrix.environment }}
+        
+    # Save the generated plan to artifacts, with a unique name per environment
+    - name: Publish Terraform Plan Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: tfplan-${{ matrix.environment }} # Unique artifact name per environment
+        path: terraform/environments/${{ matrix.environment }}/tfplan 
+        
+    # Create a string output of the Terraform Plan for this specific environment
+    - name: Create String Output for ${{ matrix.environment }}
+      id: tf-plan-string
+      run: |
+        TERRAFORM_PLAN=$(terraform show -no-color tfplan)
+        
+        delimiter="$(openssl rand -hex 8)"
+        echo "summary<<${delimiter}" >> $GITHUB_OUTPUT
+        echo "## Terraform Plan Output for ${{ matrix.environment }}" >> $GITHUB_OUTPUT
+        echo "<details><summary>Click to expand</summary>" >> $GITHUB_OUTPUT
+        echo "" >> $GITHUB_OUTPUT
+        echo '```terraform' >> $GITHUB_OUTPUT
+        echo "$TERRAFORM_PLAN" >> $GITHUB_OUTPUT
+        echo '```' >> $GITHUB_OUTPUT
+        echo "</details>" >> $GITHUB_OUTPUT
+        echo "${delimiter}" >> $GITHUB_OUTPUT
+      working-directory: terraform/environments/${{ matrix.environment }}
+        
+    # Publish the Terraform Plan output to the GitHub Actions job summary
+    - name: Publish Terraform Plan to Task Summary for ${{ matrix.environment }}
+      env:
+        SUMMARY: ${{ steps.tf-plan-string.outputs.summary }}
+      run: |
+        echo "$SUMMARY" >> $GITHUB_STEP_SUMMARY
+      
+    # If this is a Pull Request, post the plan output as a comment (will post for each environment)
+    - name: Push Terraform Output to PR for ${{ matrix.environment }}
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      env:
+        SUMMARY: "${{ steps.tf-plan-string.outputs.summary }}"
+      with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const body = `${process.env.SUMMARY}`;
+            github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body
+            })

@@ -1,0 +1,60 @@
+name: Build and Push Docker Image
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'terraform/infra/app/**'
+      - '.github/workflows/infra-build-push-app.yml'
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    # Add a conditional 'if' statement to the job
+    if: success() && github.event_name == 'pull_request' && github.ref == 'refs/heads/main' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.head.sha, 'main.tf')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check for main.tf
+        id: check_file
+        run: |
+          if [ -f "terraform/infra/app/main.tf" ]; then
+            echo "main.tf found in terraform/infra/app. Proceeding."
+            echo "file_exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "main.tf not found in terraform/infra/app. Skipping job."
+            echo "file_exists=false" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Azure Login
+        # This step, and all subsequent steps, will only run if file_exists is 'true'
+        if: steps.check_file.outputs.file_exists == 'true'
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Set up Docker Buildx
+        if: steps.check_file.outputs.file_exists == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Azure Container Registry
+        if: steps.check_file.outputs.file_exists == 'true'
+        run: |
+          az acr login --name cst8918acr
+
+      - name: Build and push Docker image
+        if: steps.check_file.outputs.file_exists == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./weather-app
+          push: true
+          tags: |
+            ${{ secrets.ACR_LOGIN_SERVER }}/weather-app:${{ github.sha }}
+            ${{ secrets.ACR_LOGIN_SERVER }}/weather-app:latest

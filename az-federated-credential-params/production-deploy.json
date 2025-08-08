@@ -1,7 +1,7 @@
 {
   "name": "production-deploy",
   "issuer": "https://token.actions.githubusercontent.com",
-  "subject": "repo:supersuper2-org/cst8918-final-project:environment:production",
-  "description": "CST8918 Lab12 - GitHub Actions",
+  "subject": "repo:supersuper2-org/cst8918-final-project:environment:prod",
+  "description": "CST8918 Final Project - GitHub Actions",
   "audiences": ["api://AzureADTokenExchange"]
 }

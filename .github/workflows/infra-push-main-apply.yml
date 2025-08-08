@@ -2,43 +2,66 @@ name: Terraform Apply
 
 on:
   push:
-    branches: [ main ]
-    paths:
-      - 'terraform/environments/**'
-      - 'terraform/infra/**'
-      - '.github/workflows/infra-push-main-apply.yml'
+    branches: [ main ] # This workflow only runs on pushes to the 'main' branch
 
+# Special permissions required for OIDC authentication
 permissions:
-  id-token: write
-  contents: read
+  id-token: write # Required for Azure OIDC authentication
+  contents: read  # Required to checkout the repository code
+
+# These environment variables are used by the Terraform AzureRM provider to set up OIDC authentication.
+env:
+  ARM_CLIENT_ID: "${{ secrets.AZURE_CLIENT_ID }}"
+  ARM_SUBSCRIPTION_ID: "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+  ARM_TENANT_ID: "${{ secrets.AZURE_TENANT_ID }}"
+  # ARM_ACCESS_KEY is typically for Azure Storage Blob backend auth, keep if your backend needs it.
+  ARM_ACCESS_KEY: "${{ secrets.ARM_ACCESS_KEY }}" 
 
 jobs:
-  terraform-apply:
+  # The TFLint Static Tests job has been removed as requested.
+  # The Terraform Plan job has been removed as requested.
+
+  # Terraform Apply job for specific environments
+  deploy-environment:
+    name: 'Terraform Apply to ${{ matrix.environment }}' # Dynamic job name for clarity in logs
     runs-on: ubuntu-latest
+    
+    # Use a matrix strategy to run the job for 'test' and 'prod' environments
     strategy:
       matrix:
-        environment: [test, prod]
+        environment: [test, prod] 
+    
+    # Set the GitHub Environment dynamically based on the matrix iteration
+    # Ensure you have corresponding GitHub Environments configured (e.g., 'test', 'prod')
+    environment: ${{ matrix.environment }} 
     
     steps:
-      - name: Checkout code
+      - name: Checkout repository code
         uses: actions/checkout@v4
 
-      - name: Setup Terraform
+      - name: Setup Terraform CLI
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.5.0"
+          # 'terraform_wrapper: false' is generally good for explicit working-directory control,
+          # but can be omitted if not causing issues.
 
-      - name: Azure Login
-        uses: azure/login@v1
+      - name: Azure Login (with OIDC)
+        # This action uses the secrets (client-id, tenant-id, subscription-id)
+        # and the 'id-token: write' permission to authenticate with Azure via OIDC.
+        uses: azure/login@v1 # or v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Terraform Init
+      - name: Terraform Init for ${{ matrix.environment }}
+        # Initialize the Terraform working directory for the current environment.
+        # This will download providers and configure the backend (if defined in your .tf files).
         run: terraform init
         working-directory: terraform/environments/${{ matrix.environment }}
 
-      - name: Terraform Apply
+      - name: Terraform Apply for ${{ matrix.environment }} ✨
+        # Applies the Terraform configuration. '-auto-approve' bypasses manual confirmation.
         run: terraform apply -auto-approve
-        working-directory: terraform/environments/${{ matrix.environment }} 
+        working-directory: terraform/environments/${{ matrix.environment }}

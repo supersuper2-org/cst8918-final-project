@@ -6,7 +6,7 @@ terraform {
     resource_group_name  = "cst8918-final-project-group-2-storage" # Replace with your RG from tf-backend
     storage_account_name = "cst8918finalprojectgrp2"               # Replace with your Storage Account name
     container_name       = "tfstate"
-    key                  = "prod.app.tfstate"
+    key                  = "infra.tfstate"
     use_oidc             = true
   }
 

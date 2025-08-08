@@ -11,6 +11,9 @@ on:
 jobs:
   terraform-static-analysis:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read # Required to checkout the code
+      security-events: write # Required to upload SARIF results to Code Scanning
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

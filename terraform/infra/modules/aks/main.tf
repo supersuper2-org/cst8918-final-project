@@ -26,6 +26,6 @@ resource "azurerm_kubernetes_cluster" "aks" {
   }
 
   tags = {
-    environment = "test"
+    environment = var.environment
   }
 }

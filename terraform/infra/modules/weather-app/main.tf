@@ -10,7 +10,7 @@ resource "azurerm_container_registry" "main" {
 
 # Azure Cache for Redis
 resource "azurerm_redis_cache" "main" {
-  name                 = "${var.environment}-redis-${random_string.suffix.result}"
+  name                 = "${var.environment}-redis"
   location             = var.location
   resource_group_name  = var.resource_group_name
   capacity             = var.redis_capacity
@@ -18,13 +18,6 @@ resource "azurerm_redis_cache" "main" {
   sku_name             = var.redis_sku
   non_ssl_port_enabled = false
   tags                 = var.tags
-}
-
-# Random string for unique naming
-resource "random_string" "suffix" {
-  length  = 6
-  special = false
-  upper   = false
 }
 
 # Kubernetes Provider Configuration

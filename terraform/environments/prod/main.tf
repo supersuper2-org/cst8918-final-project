@@ -19,3 +19,11 @@ module "aks" {
   maximum_node_count  = 3
   subnet_id           = data.terraform_remote_state.infra.outputs.prod_subnet_id
 }
+
+# Redis Module for Test Environment
+module "redis" {
+  source              = "../../infra/modules/redis"
+  environment         = "prod"
+  resource_group_name = data.terraform_remote_state.infra.outputs.resource_group_name
+  location            = data.terraform_remote_state.infra.outputs.resource_group_location
+}

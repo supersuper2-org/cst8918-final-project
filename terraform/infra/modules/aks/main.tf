@@ -32,21 +32,21 @@ resource "azurerm_kubernetes_cluster" "aks" {
   }
 }
 
-# 3. Create the Role Assignment
-resource "azurerm_role_assignment" "aks_acr_pull" {
-  # The principal_id of the AKS cluster's Managed Identity
-  principal_id = azurerm_kubernetes_cluster.aks.identity[0].principal_id
+# # 3. Create the Role Assignment
+# resource "azurerm_role_assignment" "aks_acr_pull" {
+#   # The principal_id of the AKS cluster's Managed Identity
+#   principal_id = azurerm_kubernetes_cluster.aks.identity[0].principal_id
 
-  # The role definition ID for 'AcrPull'
-  # You can use a data source to get this dynamically, or hardcode the well-known ID.
-  # Using a data source is more robust across Azure regions/environments.
-  role_definition_name = "AcrPull"
+#   # The role definition ID for 'AcrPull'
+#   # You can use a data source to get this dynamically, or hardcode the well-known ID.
+#   # Using a data source is more robust across Azure regions/environments.
+#   role_definition_name = "AcrPull"
 
-  # The scope is the ID of the Azure Container Registry resource
-  scope = var.acr_id
+#   # The scope is the ID of the Azure Container Registry resource
+#   scope = var.acr_id
 
-  # Optional: Delay creation until AKS cluster is ready (avoids race conditions)
-  depends_on = [
-    azurerm_kubernetes_cluster.aks # Ensure AKS cluster is deployed first
-  ]
-}
+#   # Optional: Delay creation until AKS cluster is ready (avoids race conditions)
+#   depends_on = [
+#     azurerm_kubernetes_cluster.aks # Ensure AKS cluster is deployed first
+#   ]
+# }

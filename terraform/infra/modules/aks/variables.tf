@@ -33,3 +33,13 @@ variable "subnet_id" {
   type        = string
 }
 
+variable "service_cidr" {
+  description = "The CIDR for the Kubernetes service network."
+  type        = string
+}
+
+variable "dns_service_ip" {
+  description = "The IP address for the Kubernetes DNS service."
+  type        = string
+}
+

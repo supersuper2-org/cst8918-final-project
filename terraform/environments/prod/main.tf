@@ -18,6 +18,8 @@ module "aks" {
   minimum_node_count  = 1
   maximum_node_count  = 3
   subnet_id           = data.terraform_remote_state.infra.outputs.prod_subnet_id
+  service_cidr        = "10.5.0.0/16"
+  dns_service_ip      = "10.5.0.10"
 }
 
 # Redis Module for Test Environment

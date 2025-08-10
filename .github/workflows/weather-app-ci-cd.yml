@@ -94,6 +94,8 @@ jobs:
         working-directory: terraform/environments/test
         env:
           TF_VAR_app_image_tag: ${{ github.sha }}
+          # ADD THE WEATHER_API_KEY HERE FOR THE TEST ENVIRONMENT
+          TF_VAR_weather_api_key: ${{ secrets.OPEN_WEATHER_API_KEY }} # Assuming you have a GitHub Secret for test
 
       # Terraform Init for Production Environment (on Push)
       - name: Terraform Init for Production
@@ -110,3 +112,5 @@ jobs:
         working-directory: terraform/environments/production
         env:
           TF_VAR_app_image_tag: ${{ github.sha }}
+          # ADD THE WEATHER_API_KEY HERE FOR THE PRODUCTION ENVIRONMENT
+          TF_VAR_weather_api_key: ${{ secrets.OPEN_WEATHER_API_KEY }} # Assuming you have a GitHub Secret for production

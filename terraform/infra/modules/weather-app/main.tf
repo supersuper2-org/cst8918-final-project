@@ -29,6 +29,21 @@ resource "kubernetes_secret" "redis_secret" {
   }
 }
 
+# Kubernetes Secret for Application Configuration
+# Weather API Secret
+resource "kubernetes_secret" "weather_api_key_secret" {
+  metadata {
+    name      = "weather-api-secret"
+    namespace = kubernetes_namespace.weather_app.metadata[0].name
+  }
+
+  data = {
+    WEATHER_API_KEY = base64encode(var.openweather_api_key)
+  }
+
+  type = "Opaque"
+}
+
 # Kubernetes ConfigMap for Application Configuration
 resource "kubernetes_config_map" "weather_app_config" {
   metadata {
@@ -73,6 +88,17 @@ resource "kubernetes_deployment" "weather_app" {
 
           port {
             container_port = 3000
+          }
+
+          env {
+            name = "WEATHER_API_KEY"
+            value_from {
+              secret_key_ref {
+                # This refers to the Kubernetes Secret you defined in the weather-app module
+                name = kubernetes_secret.weather_api_key_secret.metadata[0].name
+                key  = "WEATHER_API_KEY" # This is the key inside the Kubernetes Secret
+              }
+            }
           }
 
           env_from {

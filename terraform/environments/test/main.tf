@@ -30,9 +30,6 @@ module "redis" {
 
 module "weather_app" {
   source                     = "../../infra/modules/weather-app"
-  environment                = "test"
-  resource_group_name        = data.terraform_remote_state.infra.outputs.resource_group_name
-  location                   = data.terraform_remote_state.infra.outputs.resource_group_location
   k8s_host                   = module.aks.host
   k8s_client_certificate     = base64decode(module.aks.client_certificate)
   k8s_client_key             = base64decode(module.aks.client_key)
@@ -41,4 +38,5 @@ module "weather_app" {
   redis_ssl_port             = module.redis.redis_ssl_port
   redis_primary_key          = module.redis.redis_primary_key
   acr_login_server           = "${data.terraform_remote_state.infra.outputs.container_registry_name}.azurecr.io"
+  openweather_api_key        = var.weather_api_key
 }

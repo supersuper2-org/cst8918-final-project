@@ -1,19 +1,3 @@
-variable "resource_group_name" {
-  description = "Name of the resource group"
-  type        = string
-}
-
-variable "location" {
-  description = "Azure region for the resources"
-  type        = string
-  default     = "Canada Central"
-}
-
-variable "environment" {
-  description = "Environment name (dev, test, prod)"
-  type        = string
-}
-
 # Define variables to receive the Kubernetes connection details
 variable "k8s_host" {
   description = "Kubernetes API server host."
@@ -56,6 +40,12 @@ variable "redis_ssl_port" {
 
 variable "redis_primary_key" {
   description = "Primary access key for the Redis Cache instance"
+  type        = string
+  sensitive   = true
+}
+
+variable "openweather_api_key" {
+  description = "API key for OpenWeatherMap service"
   type        = string
   sensitive   = true
 }

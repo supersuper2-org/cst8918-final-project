@@ -51,7 +51,6 @@ resource "kubernetes_secret" "weather_api_key_secret" {
   type = "Opaque"
 }
 
-# ACR authentication secret
 resource "kubernetes_secret" "acr_auth" {
   metadata {
     name      = "acr-auth"
@@ -61,15 +60,17 @@ resource "kubernetes_secret" "acr_auth" {
   type = "kubernetes.io/dockerconfigjson"
 
   data = {
-    ".dockerconfigjson" = base64encode(jsonencode({
-      auths = {
-        "cst8918finalprojectacr.azurecr.io" = {
-          username = var.acr_username
-          password = var.acr_password
-          auth     = base64encode("${var.acr_username}:${var.acr_password}")
+    ".dockerconfigjson" = base64encode(
+      jsonencode({
+        auths = {
+          "cst8918finalprojectacr.azurecr.io" = {
+            username = var.acr_username
+            password = var.acr_password
+            auth     = base64encode("${var.acr_username}:${var.acr_password}")
+          }
         }
-      }
-    }))
+      })
+    )
   }
 }
 

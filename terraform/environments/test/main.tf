@@ -15,8 +15,8 @@ module "aks" {
   resource_group_name = data.terraform_remote_state.infra.outputs.resource_group_name
   location            = data.terraform_remote_state.infra.outputs.resource_group_location
   enable_auto_scaling = false
-  minimum_node_count  = 1
-  maximum_node_count  = 1
+  minimum_node_count  = null
+  maximum_node_count  = null
   subnet_id           = data.terraform_remote_state.infra.outputs.test_subnet_id
 }
 

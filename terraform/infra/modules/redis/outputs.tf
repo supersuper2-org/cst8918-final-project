@@ -3,7 +3,7 @@ output "redis_cache_id" {
   value       = azurerm_redis_cache.main_cache.id
 }
 
-output "resdis_hostname" {
+output "redis_hostname" {
   description = "The hostname of the Redis Cache instance"
   value       = azurerm_redis_cache.main_cache.hostname
 }

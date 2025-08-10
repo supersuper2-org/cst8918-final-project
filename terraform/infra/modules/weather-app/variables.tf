@@ -14,54 +14,48 @@ variable "environment" {
   type        = string
 }
 
-variable "acr_name" {
-  description = "Name of the Azure Container Registry"
+# Define variables to receive the Kubernetes connection details
+variable "k8s_host" {
+  description = "Kubernetes API server host."
+  type        = string
+  sensitive   = true
+}
+
+variable "k8s_client_certificate" {
+  description = "Client certificate for Kubernetes authentication (base64-decoded)."
+  type        = string
+  sensitive   = true
+}
+
+variable "k8s_client_key" {
+  description = "Client key for Kubernetes authentication (base64-decoded)."
+  type        = string
+  sensitive   = true
+}
+
+variable "k8s_cluster_ca_certificate" {
+  description = "Cluster CA certificate for Kubernetes authentication (base64-decoded)."
+  type        = string
+  sensitive   = true
+}
+
+variable "acr_login_server" {
+  description = "Login server for the Azure Container Registry. This is the <acr_name>.azurecr.io"
   type        = string
 }
 
-variable "redis_capacity" {
-  description = "Capacity of the Redis cache"
+variable "redis_hostname" {
+  description = "Hostname of the Redis Cache instance"
+  type        = string
+}
+
+variable "redis_ssl_port" {
+  description = "Port of the Redis Cache instance"
   type        = number
-  default     = 0
 }
 
-variable "redis_sku" {
-  description = "SKU of the Redis cache"
-  type        = string
-  default     = "Basic"
-}
-
-variable "app_replicas" {
-  description = "Number of replicas for the weather app"
-  type        = number
-  default     = 1
-}
-
-variable "kubernetes_host" {
-  description = "Kubernetes cluster host"
-  type        = string
-}
-
-variable "kubernetes_client_certificate" {
-  description = "Kubernetes client certificate"
+variable "redis_primary_key" {
+  description = "Primary access key for the Redis Cache instance"
   type        = string
   sensitive   = true
 }
-
-variable "kubernetes_client_key" {
-  description = "Kubernetes client key"
-  type        = string
-  sensitive   = true
-}
-
-variable "kubernetes_cluster_ca_certificate" {
-  description = "Kubernetes cluster CA certificate"
-  type        = string
-  sensitive   = true
-}
-
-variable "tags" {
-  description = "Tags to apply to all resources"
-  type        = map(string)
-  default     = {}
-} 

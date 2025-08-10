@@ -1,4 +1,6 @@
-# Kubernetes config
+# -------------------
+# Provider
+# -------------------
 provider "kubernetes" {
   host                   = var.k8s_host
   client_certificate     = var.k8s_client_certificate
@@ -8,14 +10,20 @@ provider "kubernetes" {
   config_context         = null
 }
 
-# Kubernetes Namespace
+# -------------------
+# Namespace
+# -------------------
 resource "kubernetes_namespace" "weather_app" {
   metadata {
     name = "weather-app"
   }
 }
 
-# Kubernetes Secret for Redis Connection
+# -------------------
+# Secrets
+# -------------------
+
+# Redis secret
 resource "kubernetes_secret" "redis_secret" {
   metadata {
     name      = "redis-secret"
@@ -29,8 +37,7 @@ resource "kubernetes_secret" "redis_secret" {
   }
 }
 
-# Kubernetes Secret for Application Configuration
-# Weather API Secret
+# Weather API secret
 resource "kubernetes_secret" "weather_api_key_secret" {
   metadata {
     name      = "weather-api-secret"
@@ -44,7 +51,31 @@ resource "kubernetes_secret" "weather_api_key_secret" {
   type = "Opaque"
 }
 
-# Kubernetes ConfigMap for Application Configuration
+# ACR authentication secret
+resource "kubernetes_secret" "acr_auth" {
+  metadata {
+    name      = "acr-auth"
+    namespace = kubernetes_namespace.weather_app.metadata[0].name
+  }
+
+  type = "kubernetes.io/dockerconfigjson"
+
+  data = {
+    ".dockerconfigjson" = base64encode(jsonencode({
+      auths = {
+        "cst8918finalprojectacr.azurecr.io" = {
+          username = var.acr_username
+          password = var.acr_password
+          auth     = base64encode("${var.acr_username}:${var.acr_password}")
+        }
+      }
+    }))
+  }
+}
+
+# -------------------
+# ConfigMap
+# -------------------
 resource "kubernetes_config_map" "weather_app_config" {
   metadata {
     name      = "weather-app-config"
@@ -58,7 +89,9 @@ resource "kubernetes_config_map" "weather_app_config" {
   }
 }
 
-# Kubernetes Deployment
+# -------------------
+# Deployment
+# -------------------
 resource "kubernetes_deployment" "weather_app" {
   metadata {
     name      = "weather-app"
@@ -82,8 +115,13 @@ resource "kubernetes_deployment" "weather_app" {
       }
 
       spec {
+        # Ensure image pull secret is always present
+        image_pull_secrets {
+          name = kubernetes_secret.acr_auth.metadata[0].name
+        }
+
         container {
-          image = "${var.acr_login_server}/weather-app:latest"
+          image = "${var.acr_login_server}/weather-app:${var.app_image_tag}"
           name  = "weather-app"
 
           port {
@@ -94,9 +132,8 @@ resource "kubernetes_deployment" "weather_app" {
             name = "WEATHER_API_KEY"
             value_from {
               secret_key_ref {
-                # This refers to the Kubernetes Secret you defined in the weather-app module
                 name = kubernetes_secret.weather_api_key_secret.metadata[0].name
-                key  = "WEATHER_API_KEY" # This is the key inside the Kubernetes Secret
+                key  = "WEATHER_API_KEY"
               }
             }
           }
@@ -141,7 +178,9 @@ resource "kubernetes_deployment" "weather_app" {
   }
 }
 
-# Kubernetes Service
+# -------------------
+# Service
+# -------------------
 resource "kubernetes_service" "weather_app" {
   metadata {
     name      = "weather-app-service"
@@ -160,4 +199,4 @@ resource "kubernetes_service" "weather_app" {
 
     type = "LoadBalancer"
   }
-} 
+}

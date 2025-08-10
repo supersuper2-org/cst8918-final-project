@@ -42,4 +42,7 @@ module "weather_app" {
   redis_primary_key          = module.redis.redis_primary_key
   acr_login_server           = "${data.terraform_remote_state.infra.outputs.container_registry_name}.azurecr.io"
   openweather_api_key        = var.weather_api_key
+  acr_username               = var.acr_username
+  acr_password               = var.acr_password
+  app_image_tag              = var.app_image_tag
 }

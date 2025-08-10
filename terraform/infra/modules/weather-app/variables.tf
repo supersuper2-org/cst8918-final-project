@@ -49,3 +49,20 @@ variable "openweather_api_key" {
   type        = string
   sensitive   = true
 }
+
+variable "acr_username" {
+  description = "Username for Azure Container Registry authentication"
+  type        = string
+}
+
+variable "acr_password" {
+  description = "Password for Azure Container Registry authentication"
+  type        = string
+  sensitive   = true
+}
+
+variable "app_image_tag" {
+  description = "Tag for the application image in Azure Container Registry"
+  type        = string
+  default     = "latest"
+}

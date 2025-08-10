@@ -54,14 +54,13 @@ jobs:
           push: true
           tags: ${{ secrets.ACR_LOGIN_SERVER }}/weather-app:${{ github.sha }}
 
-  deploy-to-aks:
-    name: 'Deploy to AKS - ${{ matrix.environment }}' # Make job name distinct for matrix
+  # --- New Job for Test Environment Deployment ---
+  deploy-to-aks-test:
+    name: 'Deploy to AKS - Test'
     runs-on: ubuntu-latest
     needs: build-and-push-docker
-    strategy:
-      matrix:
-        environment: [test, production]
-    environment: ${{ matrix.environment }} # This still works for GitHub Environment features
+    environment: test # Explicitly declare the environment for protection rules
+    if: github.event_name == 'pull_request' # Only run on pull requests
 
     steps:
       - name: Checkout repository code
@@ -79,38 +78,52 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      # Terraform Init for Test Environment (on PR)
-      - name: Terraform Init for Test
-        if: github.event_name == 'pull_request' && matrix.environment == 'test'
+      - name: Terraform Init
         run: terraform init
-        working-directory: terraform/environments/test
+        working-directory: terraform/environments/test # Fixed directory
         env:
           ARM_SKIP_PROVIDER_REGISTRATION: true
 
-      # Deploy to Test Environment (on PR)
-      - name: Deploy to AKS (Test)
-        if: github.event_name == 'pull_request' && matrix.environment == 'test'
+      - name: Deploy to AKS
         run: terraform apply -auto-approve
-        working-directory: terraform/environments/test
+        working-directory: terraform/environments/test # Fixed directory
         env:
           TF_VAR_app_image_tag: ${{ github.sha }}
-          # ADD THE WEATHER_API_KEY HERE FOR THE TEST ENVIRONMENT
-          TF_VAR_weather_api_key: ${{ secrets.OPEN_WEATHER_API_KEY }} # Assuming you have a GitHub Secret for test
+          TF_VAR_weather_api_key: ${{ secrets.OPEN_WEATHER_API_KEY }}
 
-      # Terraform Init for Production Environment (on Push)
-      - name: Terraform Init for Production
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.environment == 'production'
+  # --- New Job for Production Environment Deployment ---
+  deploy-to-aks-prod:
+    name: 'Deploy to AKS - Production'
+    runs-on: ubuntu-latest
+    needs: build-and-push-docker
+    environment: prod # Explicitly declare the environment for protection rules
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' # Only run on push to main
+
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform CLI
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.0"
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Terraform Init
         run: terraform init
-        working-directory: terraform/environments/production
+        working-directory: terraform/environments/prod # Fixed directory
         env:
           ARM_SKIP_PROVIDER_REGISTRATION: true
 
-      # Deploy to Production Environment (on Push)
-      - name: Deploy to AKS (Production)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && matrix.environment == 'production'
+      - name: Deploy to AKS
         run: terraform apply -auto-approve
-        working-directory: terraform/environments/production
+        working-directory: terraform/environments/prod # Fixed directory
         env:
           TF_VAR_app_image_tag: ${{ github.sha }}
-          # ADD THE WEATHER_API_KEY HERE FOR THE PRODUCTION ENVIRONMENT
-          TF_VAR_weather_api_key: ${{ secrets.OPEN_WEATHER_API_KEY }} # Assuming you have a GitHub Secret for production
+          TF_VAR_weather_api_key: ${{ secrets.OPEN_WEATHER_API_KEY }}

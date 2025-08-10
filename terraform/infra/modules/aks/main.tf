@@ -23,7 +23,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
   network_profile {
     network_plugin    = "kubenet"
     load_balancer_sku = "standard"
-    service_cidr       = "10.4.0.0/16"
+    service_cidr      = "10.4.0.0/16"
   }
 
   tags = {

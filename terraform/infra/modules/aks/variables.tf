@@ -43,3 +43,8 @@ variable "dns_service_ip" {
   type        = string
 }
 
+variable "acr_id" {
+  description = "The ID of the Azure Container Registry to which the AKS cluster will have access."
+  type        = string
+}
+

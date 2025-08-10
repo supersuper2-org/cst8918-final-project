@@ -20,6 +20,7 @@ module "aks" {
   subnet_id           = data.terraform_remote_state.infra.outputs.prod_subnet_id
   service_cidr        = "10.5.0.0/16"
   dns_service_ip      = "10.5.0.10"
+  acr_id              = data.terraform_remote_state.infra.outputs.container_registry_id
 }
 
 # Redis Module for Test Environment

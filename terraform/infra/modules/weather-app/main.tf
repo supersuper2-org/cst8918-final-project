@@ -1,41 +1,29 @@
-# Azure Container Registry
-resource "azurerm_container_registry" "main" {
-  name                = var.acr_name
-  resource_group_name = var.resource_group_name
-  location            = var.location
-  sku                 = "Basic"
-  admin_enabled       = true
-  tags                = var.tags
-}
-
-# Azure Cache for Redis
-resource "azurerm_redis_cache" "main" {
-  name                 = "${var.environment}-redis"
-  location             = var.location
-  resource_group_name  = var.resource_group_name
-  capacity             = var.redis_capacity
-  family               = "C"
-  sku_name             = var.redis_sku
-  non_ssl_port_enabled = false
-  tags                 = var.tags
-}
-
-# Kubernetes Provider Configuration
+# -------------------
+# Provider
+# -------------------
 provider "kubernetes" {
-  host                   = var.kubernetes_host
-  client_certificate     = var.kubernetes_client_certificate
-  client_key             = var.kubernetes_client_key
-  cluster_ca_certificate = var.kubernetes_cluster_ca_certificate
+  host                   = var.k8s_host
+  client_certificate     = var.k8s_client_certificate
+  client_key             = var.k8s_client_key
+  cluster_ca_certificate = var.k8s_cluster_ca_certificate
+  config_path            = null
+  config_context         = null
 }
 
-# Kubernetes Namespace
+# -------------------
+# Namespace
+# -------------------
 resource "kubernetes_namespace" "weather_app" {
   metadata {
     name = "weather-app"
   }
 }
 
-# Kubernetes Secret for Redis Connection
+# -------------------
+# Secrets
+# -------------------
+
+# Redis secret
 resource "kubernetes_secret" "redis_secret" {
   metadata {
     name      = "redis-secret"
@@ -43,13 +31,50 @@ resource "kubernetes_secret" "redis_secret" {
   }
 
   data = {
-    redis-host = azurerm_redis_cache.main.hostname
-    redis-port = azurerm_redis_cache.main.ssl_port
-    redis-key  = azurerm_redis_cache.main.primary_access_key
+    redis-host = var.redis_hostname
+    redis-port = var.redis_ssl_port
+    redis-key  = var.redis_primary_key
   }
 }
 
-# Kubernetes ConfigMap for Application Configuration
+# Weather API secret
+resource "kubernetes_secret" "weather_api_key_secret" {
+  metadata {
+    name      = "weather-api-secret"
+    namespace = kubernetes_namespace.weather_app.metadata[0].name
+  }
+
+  data = {
+    WEATHER_API_KEY = base64encode(var.openweather_api_key)
+  }
+
+  type = "Opaque"
+}
+
+resource "kubernetes_secret" "acr_auth" {
+  metadata {
+    name      = "acr-auth"
+    namespace = kubernetes_namespace.weather_app.metadata[0].name
+  }
+
+  type = "kubernetes.io/dockerconfigjson"
+
+  data = {
+    ".dockerconfigjson" = jsonencode({
+      auths = {
+        "cst8918finalprojectacr.azurecr.io" = {
+          "username" = var.acr_username
+          "password" = var.acr_password
+          "auth"     = base64encode("${var.acr_username}:${var.acr_password}")
+        }
+      }
+    })
+  }
+}
+
+# -------------------
+# ConfigMap
+# -------------------
 resource "kubernetes_config_map" "weather_app_config" {
   metadata {
     name      = "weather-app-config"
@@ -57,13 +82,15 @@ resource "kubernetes_config_map" "weather_app_config" {
   }
 
   data = {
-    REDIS_HOST = azurerm_redis_cache.main.hostname
-    REDIS_PORT = azurerm_redis_cache.main.ssl_port
-    REDIS_KEY  = azurerm_redis_cache.main.primary_access_key
+    REDIS_HOST = var.redis_hostname
+    REDIS_PORT = var.redis_ssl_port
+    REDIS_KEY  = var.redis_primary_key
   }
 }
 
-# Kubernetes Deployment
+# -------------------
+# Deployment
+# -------------------
 resource "kubernetes_deployment" "weather_app" {
   metadata {
     name      = "weather-app"
@@ -71,7 +98,7 @@ resource "kubernetes_deployment" "weather_app" {
   }
 
   spec {
-    replicas = var.app_replicas
+    replicas = 1
 
     selector {
       match_labels = {
@@ -87,12 +114,27 @@ resource "kubernetes_deployment" "weather_app" {
       }
 
       spec {
+        # Ensure image pull secret is always present
+        image_pull_secrets {
+          name = kubernetes_secret.acr_auth.metadata[0].name
+        }
+
         container {
-          image = "${azurerm_container_registry.main.login_server}/weather-app:latest"
+          image = "${var.acr_login_server}/weather-app:${var.app_image_tag}"
           name  = "weather-app"
 
           port {
             container_port = 3000
+          }
+
+          env {
+            name = "WEATHER_API_KEY"
+            value_from {
+              secret_key_ref {
+                name = kubernetes_secret.weather_api_key_secret.metadata[0].name
+                key  = "WEATHER_API_KEY"
+              }
+            }
           }
 
           env_from {
@@ -135,7 +177,9 @@ resource "kubernetes_deployment" "weather_app" {
   }
 }
 
-# Kubernetes Service
+# -------------------
+# Service
+# -------------------
 resource "kubernetes_service" "weather_app" {
   metadata {
     name      = "weather-app-service"
@@ -154,4 +198,4 @@ resource "kubernetes_service" "weather_app" {
 
     type = "LoadBalancer"
   }
-} 
+}

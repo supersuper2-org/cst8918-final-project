@@ -29,7 +29,7 @@ module "redis" {
   environment         = "test"
   resource_group_name = data.terraform_remote_state.infra.outputs.resource_group_name
   location            = data.terraform_remote_state.infra.outputs.resource_group_location
-  depends_on = [ module.aks ]
+  depends_on          = [ module.aks ]
 }
 
 module "weather_app" {
@@ -46,5 +46,5 @@ module "weather_app" {
   acr_username               = var.acr_username
   acr_password               = var.acr_password
   app_image_tag              = var.app_image_tag
-  depends_on = [ module.aks, module.redis ]
+  depends_on                 = [ module.aks, module.redis ]
 }

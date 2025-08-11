@@ -189,3 +189,5 @@ When a job failed during terraform apply, the state lock would sometimes remain 
 
 These issues highlight the complexity of integrating Terraform, GitHub Actions, AKS, and ACR in a fully automated CI/CD pipeline.
 Although we were able to work around some problems manually, we were not able to fully eliminate these failures within the project timeline.
+
+Changes that were not merged to main due to failing CI/CD because of the above metioned errors are on the branch [`refactor_weather_app`](https://github.com/supersuper2-org/cst8918-final-project/tree/refactor_weather_app)

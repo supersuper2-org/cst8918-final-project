@@ -64,9 +64,9 @@ resource "kubernetes_secret" "acr_auth" {
       jsonencode({
         auths = {
           "cst8918finalprojectacr.azurecr.io" = {
-            username = var.acr_username
-            password = var.acr_password
-            auth     = base64encode("${var.acr_username}:${var.acr_password}")
+            "username" = var.acr_username
+            "password" = var.acr_password
+            "auth"     = base64encode("${var.acr_username}:${var.acr_password}")
           }
         }
       })

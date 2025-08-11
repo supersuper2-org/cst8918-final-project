@@ -116,4 +116,76 @@ Start the Remix development server:
 ```bash
 npm run dev
 ```
+
 Your Remix Weather Application should now be running locally, typically accessible in your web browser at [`http://localhost:3000`](http://localhost:3000).
+
+# Challenges
+During the development and deployment process, we encountered several persistent issues that we were unable to fully resolve by the time of project completion.
+
+### 1. Invalid .dockerconfigjson in Kubernetes Secret
+When creating a Kubernetes secret for pulling images from Azure Container Registry (ACR), Terraform consistently failed with the error:
+
+```bash
+Secret "acr-auth" is invalid: data[.dockerconfigjson]: Invalid value: "<secret contents redacted>": invalid character 'e' looking for beginning of value
+```
+
+#### Debugging steps attempted:
+
+- Verified that the secret type was set to `kubernetes.io/dockerconfigjson` and followed the expected JSON structure for Docker registry authentication.
+
+- Encoded the credentials using base64encode and confirmed that the format matched the output of `kubectl create secret docker-registry`.
+
+- Hardcoded the ACR username and password directly in the Terraform resource to rule out CI/CD variable substitution issues.
+
+- Fetched ACR credentials in the GitHub Actions workflow and passed them via environment variables to Terraform using:
+
+
+```bash
+az acr credential show --name $ACR_NAME --query "username" -o tsv
+az acr credential show --name $ACR_NAME --query "passwords[0].value" -o tsv
+```
+
+- Verified that the credentials worked by manually running `docker login $ACR_LOGIN_SERVER` in the CI job.
+
+- Attempted using `kubernetes_secret` with `stringData` instead of `data` to see if decoding behavior was causing corruption.
+
+Despite these steps, the error persisted in Terraform when applying the Kubernetes secret resource.
+
+### 2. ImagePullBackOff errors from AKS
+
+Even when the Terraform apply succeeded, Kubernetes pods in AKS would intermittently fail to start, showing the following error:
+
+
+```
+Back-off pulling image "<acr-login-server>/weather-app:<commit-sha>"
+```
+
+#### Debugging steps attempted:
+
+- Verified that the image existed in ACR and was tagged correctly.
+
+- Confirmed that the AKS cluster had `acrPull` permissions to the ACR resource via Azure role assignments.
+
+- Tested pulling the image manually from a different environment using the same credentials (success).
+
+- Checked that the `.dockerconfigjson` secret was mounted correctly in the namespace.
+
+- Deleted and recreated pods to test if the error was transient (it persisted sporadically).
+
+### 3. Terraform remote state lease lock not releasing
+We also ran into a problem with our remote Terraform state lock in Azure Storage.
+When a job failed during terraform apply, the state lock would sometimes remain active, blocking future runs.
+
+
+#### Debugging steps attempted:
+
+- Waited for the lease lock to expire automatically (did not always happen).
+
+- Used `az storage blob lease break` manually to release the lock.
+
+- Added retries and timeouts in CI/CD to give Terraform a chance to clean up before the job ended.
+
+- Reviewed Terraform's `-lock-timeout` flag usage, but it did not address cases where the process terminated unexpectedly.
+
+These issues highlight the complexity of integrating Terraform, GitHub Actions, AKS, and ACR in a fully automated CI/CD pipeline.
+Although we were able to work around some problems manually, we were not able to fully eliminate these failures within the project timeline.

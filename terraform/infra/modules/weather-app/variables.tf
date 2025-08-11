@@ -51,14 +51,22 @@ variable "openweather_api_key" {
 }
 
 variable "acr_username" {
-  description = "Username for Azure Container Registry authentication"
   type        = string
+  description = "Azure Container Registry username"
+  validation {
+    condition     = length(var.acr_username) > 0
+    error_message = "ACR username must not be empty. Ensure TF_VAR_acr_username is set in your CI/CD pipeline."
+  }
 }
 
 variable "acr_password" {
-  description = "Password for Azure Container Registry authentication"
   type        = string
+  description = "Azure Container Registry password"
   sensitive   = true
+  validation {
+    condition     = length(var.acr_password) > 0
+    error_message = "ACR password must not be empty. Ensure TF_VAR_acr_password is set in your CI/CD pipeline."
+  }
 }
 
 variable "app_image_tag" {

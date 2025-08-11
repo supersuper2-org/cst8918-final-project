@@ -146,6 +146,6 @@ jobs:
         env:
           TF_VAR_app_image_tag: ${{ github.sha }}
           TF_VAR_weather_api_key: ${{ secrets.OPEN_WEATHER_API_KEY }}
-          TF_VAR_acr_username: ${{ secrets.ACR_NAME }}
-          TF_VAR_acr_password: ${{ secrets.ACR_PASSWORD }}
+          TF_VAR_acr_username: ${{ env.ACR_NAME }}
+          TF_VAR_acr_password: ${{ env.ACR_PASSWORD }}
           TF_VAR_acr_login_server: ${{ secrets.ACR_LOGIN_SERVER }}

@@ -13,6 +13,11 @@ output "container_registry_name" {
   value       = azurerm_container_registry.acr.name
 }
 
+output "container_registry_id" {
+  description = "The ID of the Azure Container Registry."
+  value       = azurerm_container_registry.acr.id
+}
+
 output "prod_subnet_id" {
   description = "The ID of the production subnet."
   value       = module.network.subnet_ids.prod

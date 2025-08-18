@@ -1,0 +1,151 @@
+name: CI/CD for Weather Application
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'app/**'
+      - '.github/workflows/weather-app-ci-cd.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'app/**'
+      - '.github/workflows/weather-app-ci-cd.yml'
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+  packages: write
+
+env:
+  ARM_CLIENT_ID: "${{ secrets.AZURE_CLIENT_ID }}"
+  ARM_SUBSCRIPTION_ID: "${{ secrets.AZURE_SUBSCRIPTION_ID }}"
+  ARM_TENANT_ID: "${{ secrets.AZURE_TENANT_ID }}"
+  ARM_ACCESS_KEY: "${{ secrets.ARM_ACCESS_KEY }}"
+  ACR_NAME: "${{ secrets.ACR_NAME }}"
+  ACR_LOGIN_SERVER: "${{ secrets.ACR_LOGIN_SERVER }}"
+
+jobs:
+  build-and-push-docker:
+    name: 'Build & Push Docker Image'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Azure Container Registry
+        run: az acr login --name $ACR_NAME
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./app
+          push: true
+          tags: ${{ env.ACR_LOGIN_SERVER }}/weather-app:${{ github.sha }}
+
+  deploy-to-aks-test:
+    name: 'Deploy to AKS - Test'
+    runs-on: ubuntu-latest
+    needs: build-and-push-docker
+    environment: test
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform CLI
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.0"
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Fetch ACR credentials
+        id: acr_creds
+        run: |
+          ACR_USER=$(az acr credential show --name $ACR_NAME --query "username" -o tsv)
+          ACR_PASS=$(az acr credential show --name $ACR_NAME --query "passwords[0].value" -o tsv)
+          echo "ACR_USERNAME=$ACR_USER" >> $GITHUB_ENV
+          echo "ACR_PASSWORD=$ACR_PASS" >> $GITHUB_ENV
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: terraform/environments/test
+        env:
+          ARM_SKIP_PROVIDER_REGISTRATION: true
+
+      - name: Deploy to AKS
+        run: terraform apply -auto-approve
+        working-directory: terraform/environments/test
+        env:
+          TF_VAR_app_image_tag: ${{ github.sha }}
+          TF_VAR_weather_api_key: ${{ secrets.OPEN_WEATHER_API_KEY }}
+          TF_VAR_acr_username: ${{ secrets.ACR_NAME }}
+          TF_VAR_acr_password: ${{ secrets.ACR_PASSWORD }}
+          TF_VAR_acr_login_server: ${{ secrets.ACR_LOGIN_SERVER }}
+
+  deploy-to-aks-prod:
+    name: 'Deploy to AKS - Production'
+    runs-on: ubuntu-latest
+    needs: build-and-push-docker
+    environment: prod
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform CLI
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.5.0"
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Fetch ACR credentials
+        id: acr_creds
+        run: |
+          ACR_USER=$(az acr credential show --name $ACR_NAME --query "username" -o tsv)
+          ACR_PASS=$(az acr credential show --name $ACR_NAME --query "passwords[0].value" -o tsv)
+          echo "ACR_USERNAME=$ACR_USER" >> $GITHUB_ENV
+          echo "ACR_PASSWORD=$ACR_PASS" >> $GITHUB_ENV
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: terraform/environments/prod
+        env:
+          ARM_SKIP_PROVIDER_REGISTRATION: true
+
+      - name: Deploy to AKS
+        run: terraform apply -auto-approve
+        working-directory: terraform/environments/prod
+        env:
+          TF_VAR_app_image_tag: ${{ github.sha }}
+          TF_VAR_weather_api_key: ${{ secrets.OPEN_WEATHER_API_KEY }}
+          TF_VAR_acr_username: ${{ env.ACR_USERNAME }}
+          TF_VAR_acr_password: ${{ env.ACR_PASSWORD }}
+          TF_VAR_acr_login_server: ${{ secrets.ACR_LOGIN_SERVER }}

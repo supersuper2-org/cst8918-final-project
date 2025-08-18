@@ -44,3 +44,13 @@ infra/tf-app/tf-app.plan
 register_sp.sh
 
 infra-pr-main-plan-bckp.yml
+
+# To ignore from the app
+app/public/build/
+app/node_modules
+app/.cache
+app/build
+app/.env
+app/.DS_Store
+app/.env
+.DS_Store
